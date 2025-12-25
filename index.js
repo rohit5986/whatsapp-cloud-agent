@@ -29,10 +29,42 @@ app.get("/webhook", (req, res) => {
 
 
 // 🔹 Webhook to Receive WhatsApp Messages
-app.post("/webhook", (req, res) => {
-  console.log("📩 Incoming Message Body:", JSON.stringify(req.body, null, 2));
-  res.sendStatus(200);
+app.post("/webhook", async (req, res) => {
+  const data = req.body;
+
+  if (data.object) {
+    if (data.entry && data.entry[0].changes && data.entry[0].changes[0].value.messages) {
+      const message = data.entry[0].changes[0].value.messages[0];      
+      const from = message.from;                                      // Sender number
+      const text = message.text?.body || "";                          // Incoming text
+
+      console.log("📩 Message from:", from, "→", text);
+
+      // AUTO REPLY
+      await axios.post(
+        `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
+        {
+          messaging_product: "whatsapp",
+          to: from,
+          text: { body: `Hi! 🤖 Thanks for messaging.\nYou said: "${text}"` }
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("📤 Auto reply sent");
+    }
+
+    res.sendStatus(200);
+  } else {
+    res.sendStatus(404);
+  }
 });
+
 
 
 // Start server
@@ -40,3 +72,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
