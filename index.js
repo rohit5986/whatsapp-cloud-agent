@@ -25,48 +25,55 @@ app.get("/webhook", (req, res) => {
 });
 
 app.post("/webhook", async (req, res) => {
-  console.log("🔥 Incoming Webhook Body:", JSON.stringify(req.body, null, 2));
+  console.log("📥 Incoming POST Webhook:", JSON.stringify(req.body, null, 2));
 
-  const entry = req.body.entry?.[0];
-  const changes = entry?.changes?.[0];
-  const message = changes?.value?.messages?.[0];
+  const data = req.body;
 
-  if (!message) {
-    console.log("⚠️ No message found. Payload did not contain a message.");
-    return res.sendStatus(200);
+  if (!data.object) {
+    console.log("❌ No data.object found");
+    return res.sendStatus(404);
   }
 
-  const from = message.from;
-  const text = message.text?.body || "No text";
-
-  console.log(`📩 FROM: ${from} | TEXT: ${text}`);
-
   try {
-    const response = await axios.post(
-      `https://graph.facebook.com/v17.0/${process.env.PHONE_NUMBER_ID}/messages`,
+    const message = data.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+
+    if (!message) {
+      console.log("⚠️ No message field. Maybe status update instead of text message");
+      return res.sendStatus(200);
+    }
+
+    const from = message.from;
+    const text = message.text?.body || "No text";
+
+    console.log(`📩 Received from ${from}: ${text}`);
+
+    await axios.post(
+      `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
       {
         messaging_product: "whatsapp",
         to: from,
-        text: { body: `🤖 Auto Reply: "${text}"` }
+        text: { body: `🤖 Auto-reply: You said → "${text}"` }
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    console.log("📤 Reply SENT:", response.data);
-  } catch (error) {
-    console.error("❌ ERROR sending reply:", error.response?.data || error);
-  }
+    console.log("📤 Auto-reply sent successfully!");
+    res.sendStatus(200);
 
-  res.sendStatus(200);
+  } catch (error) {
+    console.log("🔥 ERROR sending message:", error.response?.data || error);
+    res.sendStatus(500);
+  }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Running ${PORT}`));
+
 
 
 
