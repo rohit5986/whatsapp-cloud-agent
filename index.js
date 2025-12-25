@@ -25,41 +25,48 @@ app.get("/webhook", (req, res) => {
 });
 
 app.post("/webhook", async (req, res) => {
-  try {
-    const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  console.log("🔥 Incoming Webhook Body:", JSON.stringify(req.body, null, 2));
 
-    if (message?.text) {
-      const text = message.text.body;
-      const from = message.from;
+  const entry = req.body.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const message = changes?.value?.messages?.[0];
 
-      console.log("📩", from, text);
-
-      await axios.post(
-        `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
-        {
-          messaging_product: "whatsapp",
-          to: from,
-          text: { body: `🤖 Hello! You said: "${text}"` },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      console.log("📤 Reply sent");
-    }
-
+  if (!message) {
+    console.log("⚠️ No message found. Payload did not contain a message.");
     return res.sendStatus(200);
-  } catch (err) {
-    console.log("❌ ERROR:", err.response?.data || err);
-    return res.sendStatus(500);
   }
+
+  const from = message.from;
+  const text = message.text?.body || "No text";
+
+  console.log(`📩 FROM: ${from} | TEXT: ${text}`);
+
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/v17.0/${process.env.PHONE_NUMBER_ID}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to: from,
+        text: { body: `🤖 Auto Reply: "${text}"` }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("📤 Reply SENT:", response.data);
+  } catch (error) {
+    console.error("❌ ERROR sending reply:", error.response?.data || error);
+  }
+
+  res.sendStatus(200);
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Running ${PORT}`));
+
 
 
