@@ -9,11 +9,12 @@ const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
+// Home route
 app.get("/", (req, res) => {
-  res.send("WhatsApp Cloud API Agent is running 🚀");
+  res.send("🚀 WhatsApp Cloud API Agent is running");
 });
 
-// VERIFY WEBHOOK
+// Webhook verification
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -22,41 +23,40 @@ app.get("/webhook", (req, res) => {
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     return res.status(200).send(challenge);
   }
-  res.sendStatus(403);
+  return res.sendStatus(403);
 });
 
-// HANDLE INCOMING MESSAGES
+// Receiving messages
 app.post("/webhook", async (req, res) => {
-  console.log("📩 Incoming:", JSON.stringify(req.body, null, 2));
+  console.log("📥 Incoming Update:", JSON.stringify(req.body, null, 2));
+
+  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  if (!message) return res.sendStatus(200);
+
+  const from = message.from;
+  const text = message.text?.body || "";
+
+  console.log(`📩 Message from ${from}: ${text}`);
 
   try {
-    const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (!message) return res.sendStatus(200); // No message - exit
-
-    const from = message.from;
-    const text = message.text?.body || "";
-
-    // SEND REPLY
     await axios.post(
-      `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages?access_token=${ACCESS_TOKEN}`,
       {
         messaging_product: "whatsapp",
         to: from,
-        text: { body: `🤖 Auto reply: "${text}"` },
-      },
-      {
-        headers: { Authorization: `Bearer ${ACCESS_TOKEN}` }
+        text: { body: `🤖 Auto reply: ${text}` }
       }
     );
 
-    console.log("📤 Replied to:", from);
+    console.log("📤 Reply sent successfully!");
     res.sendStatus(200);
 
   } catch (error) {
-    console.error("❌ Reply Failed:", error.response?.data || error);
+    console.log("❌ ERROR:", error.response?.data || error);
     res.sendStatus(500);
   }
 });
 
+// Run server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server live on ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Running on ${PORT}`));
