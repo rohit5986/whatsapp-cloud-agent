@@ -48,19 +48,15 @@ app.post("/webhook", async (req, res) => {
     console.log(`📩 Received from ${from}: ${text}`);
 
     await axios.post(
-      `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to: from,
-        text: { body: `🤖 Auto-reply: You said → "${text}"` }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+  `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages?access_token=${ACCESS_TOKEN}`,
+  {
+    messaging_product: "whatsapp",
+    to: from,
+    text: { body: `🤖 Hello! You said: "${text}"` }
+  },
+  { headers: { "Content-Type": "application/json" } }
+);
+
 
     console.log("📤 Auto-reply sent successfully!");
     res.sendStatus(200);
@@ -73,6 +69,7 @@ app.post("/webhook", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Running ${PORT}`));
+
 
 
 
